@@ -1,6 +1,6 @@
 from django.contrib import admin
 
 # Register your models here.
-from .models import Position
+from .models import User
 
-admin.site.register(Position)
+admin.site.register(User)

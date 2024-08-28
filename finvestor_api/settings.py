@@ -37,7 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'ws_connector.apps.WsConnectorConfig'
+    'ws_connector.apps.WsConnectorConfig',
+    'user_manager.apps.UserManagerConfig'
 ]
 
 MIDDLEWARE = [
