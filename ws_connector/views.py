@@ -4,7 +4,7 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from rest_framework.response import Response
 from rest_framework import status
-from .models import User
+from .models import User, Position
 from .serializer import PositionSerializer
 from rest_framework.views import APIView
 from django.views.decorators.csrf import csrf_exempt
@@ -48,13 +48,29 @@ class WsFetchView(APIView):
             resp.raise_for_status()
         except requests.exceptions.HTTPError as e:
             return JsonResponse({"detail": str(e)}, status=resp.status_code)
-        # TODO: Save fetched positions to database
-        return JsonResponse(resp.json(), status=200)
+        positions = resp.json()
+        positions = positions["results"]
+        for i in range(len(positions)):
+            position = positions[i]
+            newPos = { 
+                "account_id": position["account_id"],
+                "user": 1, # TODO Implement user login and authentication
+                "symbol": position["stock"]["symbol"],
+                "book_value": position["book_value"]["amount"],
+                "amount": position["quantity"],
+            }
+            positions[i] = newPos
+
+        serializer = PositionSerializer(data = positions, many = True)
+        if(serializer.is_valid()):
+            serializer.save()
+            return JsonResponse(resp.json(), status=200)
+        return JsonResponse(serializer.errors, status=400)
 
 class PositionView(APIView):
     def get(self, request):
-        users = User.objects.all()
-        serializer = PositionSerializer(users, many=True)
+        positions = Position.objects.all()
+        serializer = PositionSerializer(positions, many=True)
         return JsonResponse(serializer.data, safe=False)
 
     def post(self, request):
