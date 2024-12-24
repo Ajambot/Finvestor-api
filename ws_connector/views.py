@@ -27,6 +27,7 @@ class WsLoginView(APIView):
         refresh_token = headers.get("x-refresh-token")
         expiry = headers.get("x-access-token-expires")
 
+        # TODO: add user authentication and store access token in db
         response = JsonResponse({}, status=200)
         response.set_cookie("ws-access-token", access_token, httponly=True, secure=True)
         response.set_cookie("ws-refresh-token", refresh_token, httponly=True, secure=True)
