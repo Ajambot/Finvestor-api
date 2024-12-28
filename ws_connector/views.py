@@ -87,7 +87,6 @@ class WsFetchView(APIView):
 
         positions = resp.json()
         positions = positions["results"]
-        # TODO: Every time we refresh, we are duplicating the positions for the user. Instead, every refresh, all user positions should be deleted and then added back again
         if request.user.is_authenticated:
             for i in range(len(positions)):
                 position = positions[i]
@@ -100,6 +99,7 @@ class WsFetchView(APIView):
                 }
                 positions[i] = newPos
 
+            Position.objects.filter(user=request.user.id).delete()
             serializer = PositionSerializer(data = positions, many = True)
             if(serializer.is_valid()):
                 serializer.save()
