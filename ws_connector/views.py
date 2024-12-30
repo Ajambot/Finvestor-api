@@ -58,6 +58,23 @@ class WsLoginView(APIView):
             response.set_cookie("ws-access-token-expiry", expiry, httponly=True, secure=True)
             return response
 
+class WsRefreshView(APIView):
+    def post(self, request):
+        if request.user.is_authenticated:
+            refresh_token = request.user.credential.ws_refresh_token
+        else:
+            refresh_token = request.COOKIES.get('ws-refresh-token')
+
+        if refresh_token is None:
+            return JsonResponse({ "error": "Refresh token is missing or malformed" })
+
+        try:
+            r = requests.post(ws_url + "/auth/refresh", { "refresh_token": refresh_token})
+            # TODO: Figure out what the new expiry date is after a refresh and update the expiry on file accordingly
+            return JsonResponse({}, status=200)
+        except requests.exceptions.HTTPError as e:
+            return JsonResponse({ "error": str(e) }, status = r.status_code)
+
 class WsFetchView(APIView):
     def post(self, request):
         if request.user.is_authenticated:
@@ -70,7 +87,7 @@ class WsFetchView(APIView):
             expiry = pytz.timezone("America/New_York").localize(expiry)
 
         if ws_access_token is None:
-            return JsonResponse({"message": "Wealthsimple credentials missing or malformed"}, status=401)
+            return JsonResponse({"error": "Wealthsimple credentials missing or malformed"}, status=401)
 
         if expiry < now():
             return JsonResponse({ "error": "Wealthsimple credentials are expired and need to be refreshed. Please refresh the credentials and try again." })
@@ -83,7 +100,7 @@ class WsFetchView(APIView):
             resp = requests.get(f"{ws_url}/account/positions", headers=headers)
             resp.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            return JsonResponse({"message": str(e)}, status=resp.status_code)
+            return JsonResponse({"error": str(e)}, status=resp.status_code)
 
         positions = resp.json()
         positions = positions["results"]
