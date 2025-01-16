@@ -12,5 +12,3 @@ class Position(models.Model):
 class Credential(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     ws_access_token = models.CharField(max_length=255, blank=True)
-    ws_refresh_token = models.CharField(max_length=255, blank=True)
-    ws_access_token_expiry = models.DateTimeField(blank=True, null=True)

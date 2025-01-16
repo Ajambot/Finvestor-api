@@ -1,18 +1,9 @@
-from datetime import datetime
-from django.shortcuts import render
-
 # Create your views here.
 from django.http import JsonResponse
-from django.utils.timezone import now
-from rest_framework.response import Response
-from rest_framework import status
-from .models import User, Position, Credential
+from .models import Position, Credential, User
 from .serializer import PositionSerializer
 from rest_framework.views import APIView
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 import requests
-import pytz
 
 
 ws_url = "https://trade-service.wealthsimple.com"
@@ -29,68 +20,36 @@ class WsLoginView(APIView):
 
         headers = resp.headers
         access_token = headers.get("x-access-token")
-        refresh_token = headers.get("x-refresh-token")
-        expiry = headers.get("x-access-token-expires")
 
-        if not access_token or not refresh_token or not expiry:
+        if not access_token:
             return JsonResponse({"error": "Unexpected response from third-party API."}, status=502)
 
-        expiry = datetime.utcfromtimestamp(float(expiry))
         if request.user.is_authenticated:
             user = request.user
             if not hasattr(user, 'credential'):
                 credential = Credential.objects.create(
                     user = user,
                     ws_access_token = access_token,
-                    ws_refresh_token = refresh_token,
-                    ws_access_token_expiry = expiry
                 )
             else:
-                user.credential.ws_access_token = access_token
-                user.credential.ws_refresh_token = refresh_token
-                user.credential.ws_access_token_expiry = expiry
-                user.save()
+                credentialObj = Credential.objects.get(user=request.user)
+                credentialObj.ws_access_token = access_token
+                credentialObj.save()
             return JsonResponse({ "message": "Wealthsimple Access Token stored successfully in user profile" }, status = 200)
         else:
             response = JsonResponse({ "message": "Token stored successfully in local storage" }, status=200)
             response.set_cookie("ws-access-token", access_token, httponly=True, secure=True)
-            response.set_cookie("ws-refresh-token", refresh_token, httponly=True, secure=True)
-            response.set_cookie("ws-access-token-expiry", expiry, httponly=True, secure=True)
             return response
-
-class WsRefreshView(APIView):
-    def post(self, request):
-        if request.user.is_authenticated:
-            refresh_token = request.user.credential.ws_refresh_token
-        else:
-            refresh_token = request.COOKIES.get('ws-refresh-token')
-
-        if refresh_token is None:
-            return JsonResponse({ "error": "Refresh token is missing or malformed" })
-
-        try:
-            r = requests.post(ws_url + "/auth/refresh", { "refresh_token": refresh_token})
-            # TODO: Figure out what the new expiry date is after a refresh and update the expiry on file accordingly
-            return JsonResponse({}, status=200)
-        except requests.exceptions.HTTPError as e:
-            return JsonResponse({ "error": str(e) }, status = r.status_code)
 
 class WsFetchView(APIView):
     def post(self, request):
         if request.user.is_authenticated:
             ws_access_token = request.user.credential.ws_access_token
-            expiry = request.user.credential.ws_access_token_expiry
         else:
             ws_access_token = request.COOKIES.get('ws-access-token') 
-            expiry = request.COOKIES.get('ws-access-token-expiry')
-            expiry = datetime.fromisoformat(expiry)
-            expiry = pytz.timezone("America/New_York").localize(expiry)
 
         if ws_access_token is None:
             return JsonResponse({"error": "Wealthsimple credentials missing or malformed"}, status=401)
-
-        if expiry < now():
-            return JsonResponse({ "error": "Wealthsimple credentials are expired and need to be refreshed. Please refresh the credentials and try again." })
 
         headers = {
             "Authorization": f"Bearer {ws_access_token}",

@@ -123,7 +123,3 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-CSRF_COOKIE_HTTPONLY = False
-CSRF_TRUSTED_ORIGINS = ["http://localhost:8000", "chrome-extension://gmmkjpcadciiokjpikmkkmapphbmdjok"]
-SESSION_COOKIE_SAMESITE = 'None'
